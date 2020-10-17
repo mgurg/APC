@@ -1,16 +1,34 @@
+import os,sys
 import numpy as np
 from cv2 import cv2
 
-cap = cv2.VideoCapture("./CCTV_2.mp4")
+video_file = "./CCTV_2.mp4"
+
+if os.path.exists(video_file):
+    try:
+        cap = cv2.VideoCapture(video_file)
+    except IOError as e:
+        print(f"I/O error({e.errno}): {e.strerror}")
+    except: #handle other exceptions such as attribute errors
+        print("Unexpected error:", sys.exc_info()[0])
+else:
+    print("File not found", file=sys.stderr)
+    sys.exit(1)
+
 ret, frame = cap.read()
+if frame is None:
+    print("Cannot parse file content")
+    sys.exit(1)
 
 width  = int(cap.get(3))
 height = int(cap.get(4))
 
-print(f'[INFO] width: {width}, height: {height}')
-
+print(f'[INFO] Video OK, width: {width}, height: {height}')
 
 def bbox(img, cols, rows):
+    """
+    Draw rectangle bounding box around points.
+    """
     side_length = 6
     for x, y in zip(cols, rows):
         top_left = (int(x - side_length / 2), int(y - side_length / 2))
@@ -23,9 +41,6 @@ def bbox(img, cols, rows):
 
 while(True):
     # cv2.putText(frame, "Status: {}".format('Movement'), (10, 20), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
-    b,g,r = (frame[100, 100])
-
-    # https://stackoverflow.com/questions/43086715/rgb-average-of-circles
 
     img_mask = np.zeros((height, width), np.uint8) # mask
     x_center = 180
@@ -42,7 +57,6 @@ while(True):
 
     # fps = cap.get(cv2.CAP_PROP_FPS)
     # print('fps:', fps)  # float
-
 
     cv2.imshow("APC", frame)
     ret, frame = cap.read()
