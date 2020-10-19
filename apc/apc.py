@@ -43,7 +43,19 @@ if __name__ == '__main__':
                 )
         return img
 
+    CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
+    "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+    "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
+    "sofa", "train", "tvmonitor"]
+    COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
+    
+    prototxt = f"../mobilenet_ssd/MobileNetSSD_deploy.prototxt"
+    model = f"../mobilenet_ssd/MobileNetSSD_deploy.caffemodel"
+    net = cv2.dnn.readNetFromCaffe(prototxt, model)
+
+
     while(True):
+        # https://www.ebenezertechs.com/mobilenet-ssd-using-opencv-3-4-1-deep-learning-module-python/
         # cv2.putText(frame, "Status: {}".format('Movement'), (10, 20), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
 
         img_mask = np.zeros((height, width), np.uint8) # mask
@@ -59,13 +71,42 @@ if __name__ == '__main__':
     
         frame = bbox(frame, [x_center,], [y_center,])
 
+        blob = cv2.dnn.blobFromImage(frame, 0.007843, (width, height), 127.5)
+        net.setInput(blob)
+        detections = net.forward()
+
+        # loop over the detections
+        for i in np.arange(0, detections.shape[2]):
+
+            confidence = detections[0, 0, i, 2]
+
+            if confidence > 0.5:
+                # extract the index of the class label from the
+                # detections list
+                idx = int(detections[0, 0, i, 1])
+
+                # if the class label is not a person, ignore it
+                if CLASSES[idx] != "person":
+                    continue
+
+                # compute the (x, y)-coordinates of the bounding box
+                # for the object
+                box = detections[0, 0, i, 3:7] * np.array([width, height, width, height])
+                (startX, startY, endX, endY) = box.astype("int")
+
+                label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
+                print("[INFO] {}".format(label))
+                cv2.rectangle(frame, (startX, startY), (endX, endY),COLORS[idx], 2)
+                y = startY - 15 if startY - 15 > 15 else startY + 15
+                cv2.putText(frame, label, (startX, y),cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
+
         # fps = cap.get(cv2.CAP_PROP_FPS)
         # print('fps:', fps)  # float
 
         cv2.imshow("APC", frame)
         ret, frame = cap.read()
 
-        if cv2.waitKey(100) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     cap.release()
